@@ -44,7 +44,7 @@ def save_tags(tags, filename):
 
     if filename is None:
         raise ValueError('no filename specified')
-    
+
     obj = {}
 
     for (tag_key, tag_val) in tags.items():
@@ -73,7 +73,7 @@ def load_tags(filename):
         obj = json.load(fp)
 
         for (json_key, json_val) in obj.items():
-    
+
             json_key = json_key.split('+++')
 
             if len(json_key) == 1:
@@ -86,3 +86,65 @@ def load_tags(filename):
 
     return tags
 
+def prepare_for_latex(truth_filename, truth_results, test_results):
+
+    truth_h1 = round(truth_results['h1_max_n'], 3)
+    truth_h2 = round(truth_results['h2_avg_n'], 3)
+    truth_h3 = round(truth_results['h3_non0_n'], 3)
+    truth_p1 = round(truth_results['p1_recog'], 3)
+    sents = truth_results['sents']
+
+    for (filename, results) in test_results:
+
+        h1 = round(results['h1_max_n'], 3)
+        h2 = round(results['h2_avg_n'], 3)
+        h3 = round(results['h3_non0_n'], 3)
+        p1 = round(results['p1_recog'], 3)
+
+        s = '\t\t$G$ & '
+        s += str(h1)
+        s += ' & '
+        s += str(round(h1/truth_h1, 3))
+        s += ' & '
+        s += str(h2)
+        s += ' & '
+        s += str(round(h2/truth_h2, 3))
+        s += ' & '
+        s += str(h3)
+        s += ' & '
+        s += str(round(h3/truth_h3, 3))
+        s += ' \\\\ % '
+        s += filename
+
+        print(s)
+
+        s = '\t\t$P$ & '
+        s += str(p1)
+        s += ' & '
+        s += str(round(p1/sents, 3))
+        s += ' & '
+        s += str(round(p1/truth_p1, 3))
+        s += ' \\\\ % '
+        s += filename
+
+        print(s)
+
+    s = '\t\t$G^{100}$ & '
+    s += str(truth_h1)
+    s += ' & $-$ & '
+    s += str(truth_h2)
+    s += ' & $-$ & '
+    s += str(truth_h3)
+    s += ' & $-$ \\\\ % '
+    s += args.truth
+
+    print(s)
+
+    s = '\t\t$P^{100}$ & '
+    s += str(truth_p1)
+    s += ' & '
+    s += str(round(truth_p1/sents, 3))
+    s += ' & $-$ \\\\ % '
+    s += filename
+
+    print(s)

@@ -38,25 +38,38 @@ $ git clone https://github.com/keggsmurph21/cky-parser
 $ cd cky-parser
 $ pip install --user -r requirements.txt
 $ python src/main.py --help
-usage: main.py [-h] [-c CORPUS] [-g GRAMMAR] [-j JSON] [-l LEXICON]
-               [-n NUM_SENTS] [-o OUTPUT] [--train TRAIN] [--test TEST]
+usage: main.py [-h] [-i INDUCE] [-g INGRAMMAR] [-o OUTGRAMMAR] [-c CACHE]
+               [-l LEXICON] [-n NUM_SENTS] [-t TEST [TEST ...]] [-T TRUTH]
                [-w WORDS]
                action
+
+'CKY Parser & more : for more info, check out the README :)
 
 positional arguments:
   action
 
 optional arguments:
   -h, --help            show this help message and exit
-  -c CORPUS, --corpus CORPUS
-  -g GRAMMAR, --grammar GRAMMAR
-  -j JSON, --json JSON
+  -i INDUCE, --induce INDUCE
+                        corpus to induce a grammar from (cess_cat/cess_esp)
+  -g INGRAMMAR, --ingrammar INGRAMMAR
+                        filepath to read a grammar from
+  -o OUTGRAMMAR, --outgrammar OUTGRAMMAR
+                        filepath to write a grammar to
+  -c CACHE, --cache CACHE
+                        read tags to/from, saves lots of time when parsing
   -l LEXICON, --lexicon LEXICON
+                        which lexicon to use when preparing the grammar for
+                        parsing
   -n NUM_SENTS, --num_sents NUM_SENTS
-  -o OUTPUT, --output OUTPUT
-  --train TRAIN
-  --test TEST
+                        consider only the first N sentences when analyzing
+  -t TEST [TEST ...], --test TEST [TEST ...]
+                        whitespaced-separated list of cache files to analyzed
+  -T TRUTH, --truth TRUTH
+                        cache file to use as the "ground truth" for analysis
   -w WORDS, --words WORDS
+                        only consider the first W words of sentences (useful
+                        for making sense out parse output)
 
 \end{verbatim}
 
@@ -73,7 +86,7 @@ In recognizing, we only care whether a given input sentence in grammatical.  Tha
 To this end, consider a grammar $\Gamma$ and an input sentence $S$.  Let $\alpha, \beta \in S$ be tokens at positions $i$ and $j$, respectively.  Then we define the distance $\delta$ between $\alpha$ and $\beta$ to be $$ \delta(\Gamma, \alpha, \beta) = \begin{cases}
     |\ i-j\ | & \exists A \in \Gamma \;\mbox{such that}\; A \Rightarrow^* \alpha \;\mbox{and}\; A \Rightarrow^* \beta \\
     0 & \mbox{otherwise}
-\end{cases}.$$  That is, if there is a nonterminal $A \in \Gamma$ that produces both $\alpha$ and $\beta$.  Intuitively, this corresponds to the case where $\alpha$ and $\beta$ ``fall under'' some tag in the parse tree.  Further, we can define the ``height'' $h$ of a token to be $$ h(\Gamma,\alpha) = \max_{\beta \in \sigma} \delta(\Gamma, \alpha,\beta). $$  Again, we conceptualize this for a binary tree to be the number of tags we can project up in a single direction.  For a fully recognized sentence $\hat{S}$, both the first and last tokens $\alpha_1, \alpha_n \in \hat{S}$ will be such that $h(\Gamma,\alpha_1) = |\hat{S}| - 1 = h(\Gamma,\alpha_n)$.  In addition, for incompletely recognized sentences (\textit{i.e.}, ungrammatical with respect to $\Gamma$), there will be no token $\alpha \in S$ such that $h(\Gamma,\alpha) = |S| - 1$.  
+\end{cases}.$$  That is, if there is a nonterminal $A \in \Gamma$ that produces both $\alpha$ and $\beta$.  Intuitively, this corresponds to the case where $\alpha$ and $\beta$ ``fall under'' some tag in the parse tree.  Further, we can define the ``height'' $h$ of a token to be $$ h(\Gamma,\alpha) = \max_{\beta \in \sigma} \delta(\Gamma, \alpha,\beta). $$  Again, we conceptualize this for a binary tree to be the number of tags we can project up in a single direction.  For a fully recognized sentence $\hat{S}$, both the first and last tokens $\alpha_1, \alpha_n \in \hat{S}$ will be such that $h(\Gamma,\alpha_1) = |\hat{S}| - 1 = h(\Gamma,\alpha_n)$.  In addition, for incompletely recognized sentences (\textit{i.e.}, ungrammatical with respect to $\Gamma$), there will be no token $\alpha \in S$ such that $h(\Gamma,\alpha) = |S| - 1$.
 
 In fact, tokens in sentences that are ``more completely recognized'' (in the sense that the parse tree is more completely filled in) will tend to have higher values of $h$ than tokens in sentences with sparse parse trees.  This motivates three metrics for incompletely recognized sentences: $h_1, h_2, h_3$, given by $$ h_1(\Gamma,S) := \max_{\alpha \in S} h(\Gamma,\alpha) \quad ; \quad h_2(\Gamma,S) := \frac{1}{|S| - 1}\sum_{\alpha \in S} h(\Gamma,\alpha) \quad ;$$ $$  h_3(\Gamma,S) := \left| \{ \alpha \in S : h(\Gamma,\alpha) \neq 0 \} \right|. $$
 
@@ -191,26 +204,26 @@ Beyond surveying the performance of the $\gesp^N$ grammars on the \texttt{nltk.c
 
 %Theoretically, a grammar $\hat{\Gamma}$ that generates the correct parse for any input corpus $\mathbb{S}$ would be such that $P_1(\hat{\Gamma},\mathbb{S}) = P_2(\hat{\Gamma},\mathbb{S},\hat{\pi}) = |\mathbb{S}|$.
 
-%we would like to know more than simply whether a 
+%we would like to know more than simply whether a
 
-%In addition, we consider the case in which both of 
-%In addition, 
+%In addition, we consider the case in which both of
+%In addition,
 %quad h_2(\mathbb{S}) := \frac{1}{|\mathbb{S}|} \sum_{S \in \mathbb{S}} h_2(S) $$ sum each $h_i$ over each sentence $S \in \mathbb{S}$.  Here, we note that in their current form, our metric will weight longer sentences
 
 
 %Note that for fully recognized sentence $\hat{S}$, we have $h_1(\hat{S}) = |\hat{S}|$, $h_3(\hat{S}) = 0$, while for a fully unrecognized sentence $\widetilde{S}$, we have $h_1(\hat{S}
 
-%\texttt{h-avg}, \texttt{h-max}, \texttt{h-pos}.  Precisely, let  
-%Thus, we could sum over 
+%\texttt{h-avg}, \texttt{h-max}, \texttt{h-pos}.  Precisely, let
+%Thus, we could sum over
 
-%For any two tokens $\alpha, \beta$ in a sentence $\sigma$, we can define a distance metric $\delta$ to be 
-%To this end, for any input sentence $\sigma$, we can define the height $H(\tau)$ of a token $\tau \in \sigma$ to be the 
+%For any two tokens $\alpha, \beta$ in a sentence $\sigma$, we can define a distance metric $\delta$ to be
+%To this end, for any input sentence $\sigma$, we can define the height $H(\tau)$ of a token $\tau \in \sigma$ to be the
 
 %Parsing, on the other hand, involves generating a set of grammatical parses for a given input.
 
-%, whereas in parsing we are actually generating a set of grammatical parses.  
+%, whereas in parsing we are actually generating a set of grammatical parses.
 
 
-%Obviously, the simplest metric to gauge the effectiveness of a grammar for recognizing 
+%Obviously, the simplest metric to gauge the effectiveness of a grammar for recognizing
 
 \end{document}
