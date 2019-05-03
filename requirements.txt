@@ -1,0 +1,7 @@
+gambit==14.1.1
+nltk==3.4
+pkg-resources==0.0.0
+pywatchman==1.4.0
+singledispatch==3.4.0.3
+six==1.12.0
+swampy==2.1.1

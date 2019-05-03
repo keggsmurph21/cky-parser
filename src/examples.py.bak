@@ -1,0 +1,22 @@
+import nltk
+
+# open GUI to download corpora
+#nltk.download()
+
+from nltk.corpus import cess_esp
+from nltk.corpus import cess_cat
+
+# get parsed sentences
+spanish_parsed = cess_esp.parsed_sents()
+
+# bracket notation
+print(spanish_parsed[0])
+
+# tree
+print(spanish_parsed[0].draw())
+
+# get unparsed (raw) sentences
+spanish_unparsed = cess_esp.sents()
+
+# get unparsed & tagged sentences
+spanish_POS = cess_esp.tagged_sents()

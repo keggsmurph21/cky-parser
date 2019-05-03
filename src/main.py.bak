@@ -1,0 +1,56 @@
+import argparse
+from nltk.corpus import cess_esp, cess_cat
+from grammar import Grammar, TagMap, make_CNF
+from inducer import induce
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('file', help='file to read in grammar from')
+    args = parser.parse_args()
+
+    grammar = Grammar()
+    grammar.from_file(args.file)
+    grammar = make_CNF(grammar)
+
+    tags = TagMap(grammar)
+
+    cat_tagged = cess_cat.tagged_sents()
+    tags.add_lexicon(cat_tagged)
+    tags.save( args.file + '.p' )
+    exit()
+
+    cat_untagged = cess_cat.sents()
+
+    for sent in cat_untagged[:1]:
+        for token in sent:
+
+            print(token, tags.map[token])
+
+
+    print(tags.map)
+    exit()
+
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('corpus', help='NLTK corpus to induce a grammar from (cess_esp/cess_cat)')
+    parser.add_argument('-n', type=int, help='Only parse to N sentences')
+    args = parser.parse_args()
+
+    if args.corpus == 'cess_esp':
+        parsed_sents = cess_esp.parsed_sents()
+
+    elif args.corpus == 'cess_cat':
+        parsed_sents = cess_cat.parsed_sents()
+
+    else:
+        print(f'Unrecognized corpus "{args.corpus}"')
+        parser.print_help()
+        exit(1)
+
+    if args.n is not None:
+        parsed_sents = parsed_sents[0:args.n]
+
+    grammar = induce(parsed_sents)
+    grammar = make_CNF(grammar)
+    grammar.print()

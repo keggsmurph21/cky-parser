@@ -1,0 +1,2 @@
+def to_cnf(*args, **kwargs):
+    raise NotImplementedError

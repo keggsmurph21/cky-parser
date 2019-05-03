@@ -1,0 +1,517 @@
+from __future__ import annotations
+from typing import Dict, List, Set, Tuple, Union
+
+
+DUMMY_CHAR = 'X'
+
+class Grammar():
+
+    def __init__(self, spec: str):
+
+        self.all_nonterminals: Set[str] = set()
+        self.rulesets: Dict[str, Set[Rule]] = {}
+
+        lines: List[str] = spec.split('\n')
+        rules: List[Tuple[str,str]] = []
+
+        for line in lines:
+
+            line = line.strip()
+
+            if len(line) == 0 or line[0] == '#':
+                continue
+
+            [src, tar] = line.split('->')
+            src = src.strip()
+            tar = tar.strip()
+
+            self.all_nonterminals.add(src)
+            rules.append((src, tar))
+
+        for src, tar in rules:
+
+            targets = tar.split()
+            rule = Rule(self.all_nonterminals, src, targets)
+
+            if rule.src not in self.rulesets:
+                self.rulesets[rule.src] = set()
+
+            self.rulesets[rule.src].add(rule)
+
+    def __iter__(self):
+
+        for rules in self.rulesets.values():
+            for rule in rules:
+                yield rule
+
+    def __len__(self):
+
+        acc: int = 0
+        for rule in self:
+            acc += 1
+
+        return acc
+
+    def is_cnf(self):
+
+        for rule in self:
+            if not rule.is_cnf():
+                return False
+
+        return True
+
+    def flatten_rulesets(self, rulesets: Dict[str, Set[str]]) -> List[str]:
+
+        flattened = []
+
+        for ruleset in rulesets.values():
+            for rule in ruleset:
+                flattened.append(rule)
+
+        return flattened
+
+    def to_cnf(self):
+
+        all_nonterminals = set(self.all_nonterminals)
+
+        rulesets: Dict[str, Set[Rule]] = {}
+
+        before_check = self.flatten_rulesets(self.rulesets)
+        after_check = []
+
+        for rule in before_check:
+            if rule.is_cnf():
+                if rule.src not in rulesets:
+                    rulesets[rule.src] = set()
+                rulesets[rule.src].add(rule)
+            else:
+                after_check.append(rule)
+
+        before_check = list(after_check)
+        after_check = []
+
+        for rule in before_check:
+            if rule.is_mixed():
+                raise NotImplementedError
+            else:
+                after_check.append(rule)
+
+        before_check = list(after_check)
+        after_check = []
+
+        for rule in before_check:
+            if rule.is_unit():
+                for child in self.get_nonunit_children(rule.nonterminals[0]):
+                
+                    child_rule = Rule.clone(child)
+                    child_rule.src = rule.src
+
+                    if child_rule.is_nonbinary():
+                        after_check.append(child_rule)
+
+                    if rule.src not in rulesets:
+                        rulesets[rule.src] = set()
+                    #print('\t', child_rule)
+
+                    rulesets[rule.src].add(child_rule)
+            else:
+                after_check.append(rule)
+
+        before_check = list(after_check)
+        after_check = []
+
+        dummies = {}
+        #dummies_added = set()
+        dummy_index = 1
+
+        for rule in before_check:
+            if rule.is_nonbinary():
+
+                src = rule.src
+
+                for i, nonterminal in enumerate(rule.nonterminals[:-1]):
+
+                    #print(dummies, dummies_added)
+                    #print()
+                    #print(i, src)
+                    #print(len(rule.nonterminals)-i > 2)
+
+                    if len(rule.nonterminals) - i > 2:
+
+                        #print('make new rule')
+
+                        to_encode = rule.nonterminals[i+1:]
+                        key = '_'.join(to_encode)
+                        #print(to_encode)
+
+                        """
+                        if key in dummies:
+
+                            targets = [nonterminal, dummies[key]]
+                            dummy_rule = Rule(all_nonterminals, src, targets)
+
+                            if dummy_rule.src not in rulesets:
+                                rulesets[dummy_rule.src] = set()
+                            rulesets[dummy_rule.src].add(dummy_rule)
+                            dummies_added.add(dummies[key])
+                            """
+
+                        if key not in dummies:
+       
+                            dummy_name = DUMMY_CHAR + str(dummy_index)
+                            dummy_index += 1
+                            dummies[key] = dummy_name
+
+                            all_nonterminals.add(dummy_name)
+
+                        targets = [nonterminal, dummies[key]]
+                        dummy_rule = Rule(all_nonterminals, src, targets)
+                        #print(src, dummy_rule)
+
+                        if dummy_rule.src not in rulesets:
+                            rulesets[dummy_rule.src] = set()
+                        print(dummy_rule)
+                        rulesets[dummy_rule.src].add(dummy_rule)
+                        #dummies_added.add(dummies[key])
+                        
+                        src = dummies[key]
+
+                    else:
+
+                        #to_encode = rule.nonterminals[i+1:]
+                        #key = '_'.join(to_encode)
+
+
+                        targets = [nonterminal, rule.nonterminals[-1]]
+                        dummy_rule = Rule(all_nonterminals, src, targets)
+                        #print(src, dummy_rule)
+                        #print('finish up', rule.nonterminals[-2:])
+                        #print('\t', src, [nonterminal, rule.nonterminals[-1]])
+
+                        if dummy_rule.src not in rulesets:
+                            rulesets[dummy_rule.src] = set()
+                        print('x', dummy_rule)
+                        rulesets[dummy_rule.src].add(dummy_rule)
+
+                    print()
+                    #if dummies[key] == 'X1':
+                        #print(rule, i)
+
+            else:
+                raise ValueError(f'unexpected unchecked rule: {rule}')
+
+        self.all_nonterminals = all_nonterminals
+        self.rulesets = rulesets
+
+        return
+
+        for rule in self.get_units(self.rulesets) + self.get_units(rulesets):
+            pass
+
+        for rs in rulesets.values():
+            for r in rs:
+                print(r)
+        print(self.get_nonbinaries(self.rulesets))
+        print(self.get_nonbinaries(rulesets))
+        print()
+
+        dummies = {}
+        dummy_index = 1
+
+        for rule in self.get_nonbinaries(self.rulesets) + self.get_nonbinaries(rulesets):
+            #print()
+            #print('---')
+            #print(rule)
+
+
+            pass
+                
+            """
+                    dummy_src = rule.nonterminals[0]
+
+                    for nonterminal in rule.nonterminals[1:-1]:
+
+                        print(dummies)
+                        nonterminal_tar = dummy_src + ' ' + nonterminal
+                        
+                        if nonterminal_tar not in dummies:
+
+                            dummy_src = dummy_char + str(dummy_index)
+                            dummy_index += 1
+
+                            while dummy_src in all_nonterminals:
+                                dummy_src = dummy_char + str(dummy_index)
+                                dummy_index += 1
+
+                            dummies[nonterminal_tar] = Rule(all_nonterminals, dummy_src, nonterminal_tar)
+
+                        nonterminal_rule = dummies[nonterminal_tar]
+
+                        all_nonterminals.add(dummy_src)
+                        rulesets[dummy_src] = set([ nonterminal_rule ])
+
+                        dummy_src = dummy_src
+
+                    nonterminal_tar = dummy_src + ' ' + rule.nonterminals[-1]
+                    nonterminal_rule = Rule(all_nonterminals, rule.src, nonterminal_tar)
+                    rulesets[rule.src].add(nonterminal_rule)
+                    """
+        print()
+        for rs in rulesets.values():
+            for r in rs:
+                print(r)
+
+    def to_cnf_2(self):
+
+        while not self.is_cnf():
+       
+            print('\n\niter\n\n')
+
+            all_nonterminals: Set[str] = set()
+            for rule in self:
+                all_nonterminals.add(rule.src)
+           
+            dummy_char = 'X'
+            dummy_index: int = 1
+            rulesets: Dict[str, Set[Rule]] = {}
+            unprocessed: Set[Rule] = set()
+
+            # first add conformal rules
+            for rule in self:
+
+                if rule.src not in rulesets:
+                    rulesets[rule.src] = set()
+
+                if rule.is_cnf():
+                    rulesets[rule.src].add(rule)
+
+                else:
+                    unprocessed.add(rule)
+
+            # then fix mixed rules
+            for rule in unprocessed: 
+                if rule.is_mixed():
+                    print(rule)
+                    pass#rulesets[rule.src].add(rule)
+                    
+            print('before fix units')
+            print(unprocessed)
+            for rs in rulesets.values():
+                for r in rs:
+                    print(r)
+
+            print()
+            # then fix unit productions
+            for rule in unprocessed:
+
+                if rule.is_unit():
+
+                    print('  unit', rule)
+                    unit_production = rule.nonterminals[0]
+                   
+                    for child in self.get_nonunit_children(rule.nonterminals[0]):
+
+                        print(child)
+                        [_, child_str] = child.toString().split('->')
+                        child_str = child_str.strip()
+                        child_rule = Rule(all_nonterminals, rule.src, child_str)
+
+                        if child_rule not in rulesets[rule.src]:
+                            rulesets[rule.src].add(child_rule)
+
+                    print('    /unit')
+
+            print('before force binary')
+            print(unprocessed)
+            for rs in rulesets.values():
+                for r in rs:
+                    print(r)
+
+            print()
+
+            dummies: Dict[str, Rule] = {}
+
+
+            """
+            # then make rules point to at most two sources
+            for rule in unprocessed:
+                    
+                if rule.is_nonterminal() and len(rule.nonterminals) > 2:
+                    print(rule)
+            """
+
+
+
+    def __repr__(self):
+        return f'<Grammar Rules<{repr(self.rulesets)}> >'
+
+    def __contains__(self, rule: Rule) -> bool:
+
+        for own_rule in self:
+            if own_rule._hash() == rule._hash():
+                return True
+
+        return False
+
+    def toString(self):
+
+        lines: List[str] = []
+        for rules in self.rulesets.values():
+            for rule in rules:
+                lines.append(rule.toString())
+
+        return '\n'.join(lines)
+
+    def get_cnf(self, rulesets: Dict[str, Set[Rule]]) -> List[Rule]:
+
+        filtered = []
+
+        for rules in rulesets.values():
+            for rule in rules:
+                if rule.is_cnf():
+                    filtered.append(rule)
+
+        return filtered
+
+    def get_mixed(self, rulesets: Dict[str, Set[Rule]]) -> List[Rule]:
+        
+        filtered = []
+
+        for rules in rulesets.values():
+            for rule in rules:
+                if rule.is_mixed():
+                    filtered.append(rule)
+
+        return filtered
+
+    def get_units(self, rulesets: Dict[str, Set[Rule]]) -> List[Rule]:
+        
+        filtered = []
+
+        for rules in rulesets.values():
+            for rule in rules:
+                if rule.is_unit():
+                    filtered.append(rule)
+
+        return filtered
+
+    def get_nonbinaries(self, rulesets: Dict[str, Set[Rule]]) -> List[Rule]:
+        
+        filtered = []
+
+        for rules in rulesets.values():
+            for rule in rules:
+                if rule.is_nonbinary():
+                    filtered.append(rule)
+
+        return filtered
+
+    def get_nonunit_children(self, src: str) -> List[Rule]:
+
+        children: List[Rule] = []
+
+        for child in self.rulesets[src]:
+
+            if child.is_unit():
+                children += self.get_nonunit_children(child.nonterminals[0])
+
+            else:
+                children.append(child)
+
+        return children
+
+class Rule():
+
+    def __init__(self, all_nonterminals: Set[str], src: str, targets: List[str]):
+
+        self.src: str = src
+        self.terminals: List[str] = []
+        self.nonterminals: List[str] = []
+
+        for word in targets:
+
+            word = word.strip()
+            if word == '|':
+                continue
+
+            if word in all_nonterminals:
+                self.nonterminals.append(word)
+            else:
+                self.terminals.append(word)
+
+    @staticmethod
+    def clone(rule: Rule) -> Rule:
+
+        all_nonterminals = set(rule.nonterminals)
+        targets = rule.nonterminals + rule.terminals
+
+        return Rule(all_nonterminals, rule.src, targets)
+
+    def is_cnf(self):
+        
+        if self.is_mixed():
+            return False
+        
+        if self.is_unit():
+            return False
+
+        if self.is_nonbinary():
+            return False
+
+        return True
+
+    def is_terminal(self):
+        return len(self.terminals) and not len(self.nonterminals)
+
+    def is_nonterminal(self):
+        return len(self.nonterminals) and not len(self.terminals)
+
+    def is_mixed(self):
+        return len(self.terminals) and len(self.nonterminals)
+    
+    def is_unit(self):
+        return self.is_nonterminal() and len(self.nonterminals) == 1
+
+    def is_nonbinary(self):
+        return self.is_nonterminal() and len(self.nonterminals) > 2
+
+    def _hash(self):
+        return f'{self.src}={",".join(self.nonterminals)};{",".join(self.terminals)}'
+
+    def __repr__(self):
+        
+        targets = self.terminals + self.nonterminals
+
+        if self.is_cnf():
+            return f'<{self.src}: {",".join(targets)}>'
+        else:
+            return f'*<{self.src}: {",".join(targets)}>'
+
+    def toString(self):
+
+        if self.is_terminal():
+            target = ' | '.join(self.terminals)
+        else:
+            target = ' '.join(self.nonterminals + self.terminals)
+
+        return f'{self.src} -> {target}'
+
+
+if __name__ == '__main__':
+
+    grammar = open('./grammars/jurafsky-example.txt').read()
+    g = Grammar(grammar)
+    print(g.toString())
+    #print(g.is_cnf())
+    print()
+
+    #print(g.get_mixed(g.rulesets))
+    #print(g.get_unit(g.rulesets))
+    #print(g.get_nonbinary(g.rulesets))
+
+    g.to_cnf()
+
+    print(g.toString())
+    #print(g.is_cnf())
+    #print()
+

@@ -1,0 +1,85 @@
+import cnf
+import cky
+import grammar
+import unittest
+
+class RulesTestCase(unittest.TestCase):
+
+    def setUp(self):
+        
+        self.nonterminals = set(['S', 'VP', 'NP', 'PP', 'Noun'])
+
+    def testTerminals(self):
+
+        rule = grammar.Rule(self.nonterminals, 'Noun', 'book | flight | meal | money')
+
+        assert len(rule.nonterminals) == 0, 'should parse 0 nonterminals'
+        assert len(rule.terminals) == 4, 'should parse 4 terminals'
+        assert rule.is_cnf, 'rules with just terminals should be CNF'
+
+    def testNonTerminals(self):
+
+        rule = grammar.Rule(self.nonterminals, 'S', 'NP VP')
+
+        assert len(rule.nonterminals) == 2, 'should parse 2 nonterminals'
+        assert len(rule.terminals) == 0, 'should parse 0 terminals'
+        assert rule.is_cnf, 'rules with two nonterminals should be CNF'
+
+        rule = grammar.Rule(self.nonterminals, 'S', 'VP')
+
+        assert len(rule.nonterminals) == 1, 'should parse 1 nonterminals'
+        assert len(rule.terminals) == 0, 'should parse 0 terminals'
+        assert rule.is_cnf == False, 'rules with one nonterminals should not be CNF'
+
+        rule = grammar.Rule(self.nonterminals, 'S', 'NP VP PP')
+
+        assert len(rule.nonterminals) == 3, 'should parse 3 nonterminals'
+        assert len(rule.terminals) == 0, 'should parse 0 terminals'
+        assert rule.is_cnf == False, 'rules with three or more nonterminals should not be CNF'
+
+        rule = grammar.Rule(self.nonterminals, 'S', 'NP VP NP')
+
+        assert len(rule.nonterminals) == 3, 'should parse 3 nonterminals'
+        assert len(rule.terminals) == 0, 'should parse 0 terminals'
+        assert rule.is_cnf == False, 'rules with three or more nonterminals should not be CNF'
+
+    def testMixed(self):
+
+        rule = grammar.Rule(self.nonterminals, 'NP', 'Noun test')
+
+        assert len(rule.nonterminals) == 1, 'should parse 1 nonterminal'
+        assert len(rule.terminals) == 1, 'should parse 1 terminals'
+        assert rule.is_cnf == False, 'rules with mixed terminals and nonterminals should not be CNF'
+
+        rule = grammar.Rule(self.nonterminals, 'NP', 'Noun test other')
+
+        assert len(rule.nonterminals) == 1, 'should parse 1 nonterminal'
+        assert len(rule.terminals) == 2, 'should parse 2 terminals'
+        assert rule.is_cnf == False, 'rules with mixed terminals and nonterminals should not be CNF'
+
+
+class GrammarsTestCase(unittest.TestCase):
+
+    def testJurafskyExample(self):
+
+        text = open('./grammars/jurafsky-example.txt').read()
+        g = grammar.Grammar(text)
+
+        assert len(g) == 22, 'expect to find 22 rules'
+        assert g.is_cnf == False, 'expect grammar not to be in CNF'
+
+        g.to_cnf()
+
+        assert g.is_cnf == True, 'expect grammar to be CNF after calling to_cnf()'
+
+    def testJurafskyExampleCNF(self):
+
+        text = open('./grammars/jurafsky-example-cnf.txt').read()
+        g = grammar.Grammar(text)
+
+        assert len(g) == 26, 'expect to find 26 rules'
+        assert g.is_cnf == True, 'expect grammar to be in CNF'
+
+if __name__ == '__main__':
+    unittest.main()
+
