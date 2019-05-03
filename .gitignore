@@ -1,3 +1,6 @@
+# files that are too big for github
+cache/*tags.json
+
 # LaTeX
 *.fdb_latexmk
 *.fls
